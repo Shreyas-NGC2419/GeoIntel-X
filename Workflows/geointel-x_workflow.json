@@ -1,0 +1,1576 @@
+{
+  "name": "GeoIntel-X",
+  "nodes": [
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        144
+      ],
+      "id": "85402417-17e8-49d2-9e56-6742c6093f35",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "let newItems = []\n// Get the first item from previous node\n// const item = items[0].json;\nfor(let item of items){\n  \n// Slice the \"data\" array to only 2 entries\nitem.json.data = item.json.data.slice(0, 2);\n\n// Return the modified object\nnewItems.push(item)\n}\n\nreturn newItems\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -32
+      ],
+      "id": "bd0c80f9-000a-40cd-8688-6bc3a86f0d6c",
+      "name": "Shortened Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "33145aef-e0ad-494f-8d9a-f7f5e3a281f3",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "US_Treasury_10Y",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "04ad8d65-c7a4-4d7c-b3a6-fc0e5e9eacc1",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "CRUDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        160
+      ],
+      "id": "6ea48517-0b1b-4bab-b930-c10f721c4b6a",
+      "name": "Ret(1-val)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "33145aef-e0ad-494f-8d9a-f7f5e3a281f3",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "US_Treasury_10Y",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "596f66e0-3874-441f-ab6e-76a099c08d24",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "CRUDE",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "626e4d3c-1060-4a82-a9b2-b0d924d20826",
+      "name": "Ret(Multival)"
+    },
+    {
+      "parameters": {
+        "url": "ALPHA_VANTAGE_API_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "function",
+              "value": "={{ $json.params.function }}"
+            },
+            {
+              "name": "interval",
+              "value": "={{ $json.params.interval }}"
+            },
+            {
+              "name": "from_currency",
+              "value": "={{ $json.params.from_currency }}"
+            },
+            {
+              "name": "to_currency",
+              "value": "={{ $json.params.to_currency }}"
+            },
+            {
+              "name": "maturity",
+              "value": "={{ $json.params.maturity }}"
+            },
+            {
+              "name": "datatype",
+              "value": "={{ $json.params.datatype }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        -32
+      ],
+      "id": "40789707-462a-4f9c-9764-091413471626",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "mpa7Al9JslHl470k",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all incoming items from the previous node\nconst allItems = items;\n\n// Create a new empty array to store our results\nconst newItems = [];\n\n// Loop through each item (USD, then EUR)\nfor (const item of allItems) {\n  // Use 'item.json' to get the data for the CURRENT item in the loop\n  const json_data = item.json;\n\n  // Access the main time series object for the current item\n  const timeSeries = json_data['Time Series FX (Daily)'];\n\n  // Get all the keys (the dates) from the object into an array\n  const allDates = Object.keys(timeSeries);\n\n  // Use .slice() on the array of dates to get the first 2\n  const latest2Dates = allDates.slice(0, 2);\n\n  // Build a new object with only the data for the sliced dates\n  const filteredTimeSeries = {};\n  for (const date of latest2Dates) {\n    filteredTimeSeries[date] = timeSeries[date];\n  }\n\n  // Make a copy of the original Meta Data to work with\n  const filteredMetaData = { ...json_data['Meta Data'] };\n\n  // Use the 'delete' command to remove the keys you don't want\n  delete filteredMetaData['4. Output Size'];\n  delete filteredMetaData['5. Last Refreshed'];\n  delete filteredMetaData['6. Time Zone'];\n\n  // Push the final, reconstructed JSON for the current item into our results array\n  newItems.push({\n    json: {\n      \"Meta Data\": filteredMetaData,\n      \"Time Series FX (Daily)\": filteredTimeSeries\n    }\n  });\n}\n\n// Return the full array of new, processed items\nreturn newItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        160
+      ],
+      "id": "c674dafa-ef21-4146-9f3c-7ce4b78ad5ee",
+      "name": "Shortened Currencies"
+    },
+    {
+      "parameters": {
+        "url": "ALPHA_VANTAGE_API_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "function",
+              "value": "={{ $json.params.function }}"
+            },
+            {
+              "name": "from_symbol",
+              "value": "={{ $json.params.from_currency }}"
+            },
+            {
+              "name": "to_symbol",
+              "value": "={{ $json.params.to_currency }}"
+            },
+            {
+              "name": "output_size",
+              "value": "compact"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        160
+      ],
+      "id": "ce9b09dc-e389-41ca-b23c-cbbeada5f3b2",
+      "name": "Currency Query",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "mpa7Al9JslHl470k",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "GOLDAPI_URL",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        352
+      ],
+      "id": "b17842fc-00e2-4134-8ea6-fe33667d5715",
+      "name": "HTTP Request3",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "zgJmugUnYwi1hfMI",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ae218b13-764f-499f-a4b0-ed57d4cf756d",
+              "name": "name",
+              "value": "=Gold Price in USD",
+              "type": "string"
+            },
+            {
+              "id": "12fc71d3-08df-4369-9f96-606d8de2e9d4",
+              "name": "prev_close_price",
+              "value": "={{ $json.prev_close_price }}",
+              "type": "number"
+            },
+            {
+              "id": "841c956b-69a0-4a12-ada1-f908ac9da3ea",
+              "name": "price",
+              "value": "={{ $json.price }}",
+              "type": "number"
+            },
+            {
+              "id": "c85c2647-da56-456a-bddb-05a90957e4ec",
+              "name": "change in usd since yesterday",
+              "value": "={{ $json.ch }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        352
+      ],
+      "id": "d97be3c8-776f-46f1-9d63-745011655278",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        160
+      ],
+      "id": "643726bf-6341-4f78-83fb-e0b578b9046f",
+      "name": "Final Finance Info"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "GeoIntel-X_FinData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REDACTED_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "REDACTED_SHEET_GID",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REDACTED_SHEET_ID/edit#gid=REDACTED_SHEET_GID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Indicator": "={{ $json.Indicator }}",
+            "Today's value": "={{ $json['Today\\'s value'] }}",
+            "Yesterday's value": "={{ $json['Yesterday\\'s value'] }}",
+            "Unit": "={{ $json.Unit }}"
+          },
+          "matchingColumns": [
+            "Indicator"
+          ],
+          "schema": [
+            {
+              "id": "Indicator",
+              "displayName": "Indicator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Today's value",
+              "displayName": "Today's value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Yesterday's value",
+              "displayName": "Yesterday's value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Unit",
+              "displayName": "Unit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1888,
+        160
+      ],
+      "id": "88f6aa9d-a8f4-4b25-9209-967aaddf3b46",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZbBebqNSpfyjd2fb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "REDACTED_RSS_FEED_LINK",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -656,
+        784
+      ],
+      "id": "381fe3f7-0d6d-4c88-a56c-6c2d311a3478",
+      "name": "RSS Read1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d40b1c9-e8cc-4282-88a1-a76efa41dd3b",
+              "name": "id",
+              "value": "={{ $itemIndex + 1 }}",
+              "type": "string"
+            },
+            {
+              "id": "2ee1f428-2578-45b1-888b-9987c69020a8",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "4309c284-df5c-427a-a259-d6d4beba4937",
+              "name": "link",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "18e5c387-54f3-4f4e-b6fe-aeb0f5bf9073",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "cd5edc88-f4a2-42a3-b2bc-c22256acb7d0",
+              "name": "isoDate",
+              "value": "={{ $json.isoDate }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -464,
+        784
+      ],
+      "id": "8c6334a9-cc3f-4ce9-a79e-9e559f822eaf",
+      "name": "Essential Info"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "acf9a533-7dc7-419a-96ae-9423c1417e9b",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "4b468da3-de06-4564-bef3-e0668c1eea0f",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "ef9952d2-0c3a-4382-80e9-ceb95686400d",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        784
+      ],
+      "id": "b2d14464-fdd1-455a-be92-59da21e8a142",
+      "name": "Info to Triage"
+    },
+    {
+      "parameters": {
+        "batchSize": 50,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        96,
+        896
+      ],
+      "id": "3ba7911d-fd3b-456f-92db-e900d6166c52",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        320,
+        896
+      ],
+      "id": "cbf61255-ab86-42ed-abca-921cb470aefd",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        544,
+        1056
+      ],
+      "id": "01d5f5fc-9dc6-445d-bc13-2ef04c0e9de8",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Y8N2zahJtppaRAXW",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1024,
+        1024
+      ],
+      "id": "7cd494dc-8d34-4944-8c23-1b62f00b8e4e",
+      "name": "Wait1",
+      "webhookId": "c7dc2d24-1801-4482-842c-5defc12aff99"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=**Articles to Analyze:**\n {{ JSON.stringify($json.data) }}",
+        "options": {
+          "systemMessage": "You are an expert Geopolitical Triage Analyst.\nYour mission is to analyze a list of incoming news reports and select the definitive Top 10 most strategically significant global events for a high-level strategic briefing. Your output must be a curated, balanced, and globally representative list.\n\nYou will be provided with a JSON array of news articles.\n\nYour task is to respond with ONLY a valid JSON array containing exactly 10 objects. Each object must correspond to a selected article and contain three keys:\n\n\"id\": The original id of the article.\n\"title\": The original title of the article.\n\"score\": A numerical score from 1 to 10.\n\nCRITICAL SELECTION & BALANCING CRITERIA:\nTo build your Top 10 list, you must follow this process:\n\n1. Initial Scoring: Mentally assign a score (1-10) to all incoming articles based on these criteria:\n-   Score 1-3: Local/regional event with very limited international impact.\n-   Score 4-6: Significant national event with potential cross-border or economic implications.\n-   Score 7-8: Major international event involving multiple powerful nations or significant economic shifts.\n-   Score 9-10: A critical global event with the potential to severely disrupt international relations, global markets, or lead to major conflict.\n\n2. Strict Filtering for the Top 10: After initial scoring, you MUST apply these filtering rules to build your final list of 10.\n\nTHEMATIC CAPPING (HARD RULE): Your final Top 10 list may contain no more than two (2) articles pertaining to the same single ongoing conflict or topic (e.g., Russia-Ukraine War, a specific trade dispute). You must select the two most significant and distinct updates from that topic and discard the rest from the Top 10.\n\nNOVELTY & ESCALATION > VOLUME: Prioritize novelty and genuine escalation. An incremental update (e.g., daily battlefield reports, repetitive diplomatic statements) should not make the Top 10 unless it reports a truly paradigm-shifting event (e.g., a formal peace treaty, use of a new strategic weapon system, direct involvement of a new major power).\n\nFORCED DOMAIN DIVERSITY: Your Top 10 list must include the single most significant event from at least four (4) of the following domains:\n\nHard Security / Military Conflict\nMacroeconomics / Finance\nInternational Diplomacy\nStrategic Technology / Energy / Climate Security\nDomestic Politics of a Major Power\n\nGEOGRAPHIC REPRESENTATION: Ensure the final list reflects a global perspective. Actively seek out the most important story from different major regions (e.g., The Americas, Europe, Indo-Pacific, Middle East & Africa) to avoid regional bias."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        896
+      ],
+      "id": "7aa2a1d6-53a7-4e33-a8e4-e3f9e74d719b",
+      "name": "Triage Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e14667e-981a-4609-89b8-91c33a240a1b",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "6feae7ad-3b02-41f2-9c63-303997a2c254",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        736
+      ],
+      "id": "b385880e-236a-4e03-b4c0-4d1082a1c203",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the raw text output from the LLM node\nconst rawOutput = $input.item.json.output;\n\n// Find the start and end of the JSON array\nconst jsonStart = rawOutput.indexOf('[');\nconst jsonEnd = rawOutput.lastIndexOf(']');\n\n// Extract just the JSON part\nconst jsonString = rawOutput.substring(jsonStart, jsonEnd + 1);\n\n// Parse the clean string into a real JSON object\nconst parsedJson = JSON.parse(jsonString);\n\n// Return the parsed JSON so the next node can use it\nreturn parsedJson;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        896
+      ],
+      "id": "b468fa57-c62d-4ef5-93a2-dedc5e4f48b6",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        320,
+        736
+      ],
+      "id": "cf00bd5a-cc14-441e-81e4-03fc9b07a9a5",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "html": "{{ $json.html }}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        2864,
+        816
+      ],
+      "id": "5964a07c-938a-4231-86c7-9122706dae11",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "html",
+        "options": {
+          "fileName": "index.html"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3088,
+        816
+      ],
+      "id": "725f5c08-cf72-41b1-b382-7b2fcf7ee633",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=GeoIntel-X Briefings {{ DateTime.now().format('dd-MM-yyyy')}}",
+        "message": "=Hello {{ $json.name }},\nHere are Today's Top Geopolitical Briefings\n\n<br>\n<p>If you want to unsubscribe from this service, <a href=\"https://REDACTED_PROJECT.supabase.co/functions/v1/unsubscribe?id={{ $json.id }}\"> CLICK HERE </a></p>",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3792,
+        848
+      ],
+      "id": "62a9d2de-9386-4c99-ad51-01fc2fbf0b69",
+      "name": "Send a message",
+      "webhookId": "0ce4d090-efe9-4c49-9924-405eb3d2614f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "wbXxJSQVLbGSUCOV",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REDACTED_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "GeoIntel-X_FinData",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REDACTED_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=REDACTED_SHEET_GID",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REDACTED_SHEET_ID/edit#gid=REDACTED_SHEET_GID"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        1520,
+        992
+      ],
+      "id": "21b5c96c-3574-48e3-a3c9-d862713d2ef9",
+      "name": "Get Financial Data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZbBebqNSpfyjd2fb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the raw text output from the LLM node\nconst rawOutput = $input.item.json.output;\n\n// Find the start and end of the JSON array\nconst jsonStart = rawOutput.indexOf('[');\nconst jsonEnd = rawOutput.lastIndexOf(']');\n\n// Extract just the JSON part\nconst jsonString = rawOutput.substring(jsonStart, jsonEnd + 1);\n\n// Parse the clean string into a real JSON object\nconst parsedJson = JSON.parse(jsonString);\n\n// Return the parsed JSON so the next node can use it\nreturn parsedJson;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        864
+      ],
+      "id": "97d6f938-d791-461a-987d-811970a9129a",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2304,
+        1024
+      ],
+      "id": "2c326691-31f9-41c2-8d18-4cd1049c21b6",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Y8N2zahJtppaRAXW",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($json.data) }}",
+        "options": {
+          "systemMessage": "=You are a data-to-HTML injection engine. Your purpose is to populate a fixed HTML template with data from a JSON array.\n\n## YOUR TASK ##\n\n1. You will be given a JSON array of objects, where each object has a \"title\" and a \"strategic_analysis\".\n2. Your ONLY task is to loop through the JSON array and replace the `` placeholder in the HTML template below.\n3. For EACH object in the JSON array, you must generate the following HTML structure and place it where the placeholder was:\n\n    <div class=\"article\">\n        <h2>[title]</h2>\n        <p>[strategic_analysis]</p>\n    </div>\n\n4. Do NOT modify, add to, or change any other part of the HTML template, including the CSS, except for inserting the articles.\n5. Your final output must be ONLY the complete, populated HTML code, starting with <!DOCTYPE html>. Do not wrap it in markdown, quotes, or add any commentary.\n\n## THE HTML TEMPLATE ##\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>GeoIntel-X: Daily Strategic Briefing</title>\n    <link href=\"https://fonts.googleapis.com/css2?family=Source+Serif+Pro:wght@400;600&family=Source+Sans+Pro:wght@400;600&display=swap\" rel=\"stylesheet\">\n    <style>\n        body {\n            font-family: 'Source Serif Pro', Georgia, serif;\n            line-height: 1.6;\n            margin: 0;\n            padding: 0;\n            color: #222;\n            background-color: #fff;\n        }\n        .container {\n            max-width: 850px;\n            margin: 40px auto;\n            padding: 0 20px;\n        }\n        .header {\n            text-align: center;\n            border-bottom: 2px solid #000;\n            padding-bottom: 15px;\n            margin-bottom: 40px;\n        }\n        .header img {\n            max-width: 160px;\n            height: auto;\n        }\n        .header h1 {\n            font-family: 'Source Sans Pro', Arial, sans-serif;\n            font-size: 28px;\n            font-weight: 600;\n            margin-top: 15px;\n            margin-bottom: 0;\n            color: #000;\n        }\n        .article {\n            margin-bottom: 40px;\n            page-break-inside: avoid;\n        }\n        .article h2 {\n            font-family: 'Source Sans Pro', Arial, sans-serif;\n            font-size: 18px;\n            font-weight: 600;\n            color: #000;\n            margin-top: 0;\n            margin-bottom: 10px;\n            border-bottom: 1px solid #000;\n            padding-bottom: 5px;\n        }\n        .article p {\n            text-align: justify;\n            margin: 0;\n            font-size: 15px;\n        }\n        .article p strong,\n        .article p span.highlight {\n            color: #B22222;\n            font-weight: 600;\n        }\n        .watermark {\n            text-align: center;\n            margin-top: 60px;\n            padding-top: 10px;\n            font-size: 11px;\n            color: #666;\n            border-top: 1px solid #000;\n        }\n        @media (max-width: 600px) {\n            .container {\n                padding: 0 10px;\n            }\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <img src=\"https://i.ibb.co/pshYdLF/Geo-Intel-X-logo.png\" alt=\"GeoIntel-X Logo\">\n            <h1>GeoIntel-X: Daily Strategic Briefing {{ DateTime.now().format('dd-MM-yyyy') }}</h1>\n        </div>\n\n        ``\n\n        <div class=\"watermark\">\n            <p>GeoIntel-X</p>\n        </div>\n    </div>\n</body>\n</html>"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2288,
+        816
+      ],
+      "id": "0225f0ec-c569-4186-99b0-27e3ee92963a",
+      "name": "Compiler Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=**Articles Array:**\n {{ JSON.stringify($json.data) }}",
+        "options": {
+          "systemMessage": "You are the \"AI Strategy Analyst\" in the GeoIntel-X system.\nYou are given a JSON array of 40 curated global news articles.\n\nBefore producing your final analysis, you may call the function `Get Financial Data` tool to retrieve live market and economic data from the Google Sheet.\n\nYour task:\n1. Select the 10 most strategically important, novel, and diverse events.\n2. For each event, generate:\n   \"title\": the article title\n   \"strategic_analysis\": a 3–6 sentence analysis that:\n       • explains global strategic significance,\n       • correlates with real market data (Sensex, Nifty, INR/USD, Brent crude, gold, yields) and explicitly deduce why today's prices changed from yesterday’s prices (use tool data where needed),\n       • explains implications specifically for India,\n       • comments on escalation/de-escalation/structural change,\n       • suggests what to watch next.\n\nREQUIREMENTS:\n- If you need financial data to assess market impact, CALL `Get Financial Data` tool with the symbols you need before finalizing your answer.\n- For Gold price, convert it from $/oz to INR/g using the tool for getting current USD rate\n- Limit to at most two events from the same conflict/topic.\n- Ensure domain diversity: cover ≥4 of these domains:\n  Hard Security, Macroeconomics/Finance, International Diplomacy,\n  Strategic Technology/Energy/Climate, Domestic Politics of a Major Power.\n- Ensure geographic diversity: at least 4 major regions.\n\n** Main thing is that your report should sound in human-like tone with professional wordings. \n\nOUTPUT FORMAT:\nOnce you have all data you need, return ONLY a valid JSON array of exactly 10 objects with keys:\n\"title\" and \"strategic_analysis\"."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        752
+      ],
+      "id": "7480c3fa-3ca6-4067-924c-56a7a11a7c26",
+      "name": "Strategic Analysis Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        976
+      ],
+      "id": "a404f03d-99bb-466e-8b89-49754c02dfaf",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Y8N2zahJtppaRAXW",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        864
+      ],
+      "id": "c6f69541-9465-4ebe-bb97-4f92b9ca7979",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "content": "**STRATEGIC ANALYSIS AGENT**\n\n",
+        "height": 528,
+        "width": 752,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1312,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "5deb0568-b9c6-46ff-a06a-772ecab67910",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "**PDF COMPILER AGENT**\n",
+        "height": 528,
+        "width": 1216,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2224,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "5bffbf4d-9f11-48e6-b562-f38604ba42b0",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "**NEWS COLLECTION AGENT**",
+        "height": 288,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -688,
+        688
+      ],
+      "typeVersion": 1,
+      "id": "a2d4e466-9894-41ed-8700-9130350aa246",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "jsCode": "data = $input.first().json.data\n\nconst rows = [];\n\n// Process Treasury & Oil data (group today & yesterday together)\nfor (const item of data) {\n  if (item.data) {\n    // Sort latest first\n    const sorted = item.data.sort((a,b) => new Date(b.date) - new Date(a.date));\n    rows.push({\n      json: {\n        Indicator: item.name,\n        \"Today's value\": sorted[0]?.value ?? \"\",\n        \"Yesterday's value\": sorted[1]?.value ?? \"\",\n        Unit: item.unit\n      }\n    });\n  }\n\n  // Process FX Data\n  if (item[\"Meta Data\"] && item[\"Time Series FX (Daily)\"]) {\n    const fromSymbol = item[\"Meta Data\"][\"2. From Symbol\"];\n    const toSymbol = item[\"Meta Data\"][\"3. To Symbol\"];\n    const pairName = `${fromSymbol}/${toSymbol} FX Close`;\n\n    // Get the two most recent dates\n    const sortedDates = Object.keys(item[\"Time Series FX (Daily)\"])\n      .sort((a,b) => new Date(b) - new Date(a));\n\n    rows.push({\n      json: {\n        Indicator: pairName,\n        \"Today's value\": item[\"Time Series FX (Daily)\"][sortedDates[0]][\"4. close\"],\n        \"Yesterday's value\": item[\"Time Series FX (Daily)\"][sortedDates[1]][\"4. close\"],\n        Unit: \"FX Rate\"\n      }\n    });\n  }\n\n  // Process Gold\n  if (item.name === \"Gold Price in USD\") {\n    rows.push({\n      json: {\n        Indicator: item.name,\n        \"Today's value\": item.price,\n        \"Yesterday's value\": item.prev_close_price,\n        Unit: \"USD/oz\"\n      }\n    });\n  }\n}\n\nreturn rows;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        160
+      ],
+      "id": "655093be-2e4c-47c2-844d-a92f03377b4b",
+      "name": "G-Sheet Formatter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This array holds all the financial data points we want to fetch.\n// Each object represents one API call.\nconst tasks = [\n  // {\n  //   name: \"CrudeOil_Brent\",\n  //   params: { function: \"BRENT\", interval: \"daily\", datatype: \"json\" }\n  // },\n  {\n    name: \"USD_to_INR\",\n    params: { function: \"FX_DAILY\", from_currency: \"USD\", to_currency: \"INR\" }\n  },\n  {\n    name: \"EUR_to_INR\",\n    params: { function: \"FX_DAILY\", from_currency: \"EUR\", to_currency: \"INR\" }\n  },\n  {\n    name: \"US_Treasury_10Y\",\n    params: { function: \"TREASURY_YIELD\", interval: \"daily\", maturity: \"10year\" }\n  },\n  {\n    name: \"CRUDE\",\n    params: { function: \"BRENT\", interval: \"daily\"}\n  }\n];\n\n\n// Return the list of tasks. n8n will turn each object in this array\n// into a separate item for the next node.\nreturn tasks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        48
+      ],
+      "id": "c65b188d-4545-44d8-a278-e6746d147d5b",
+      "name": "Finance Index Dictionary"
+    },
+    {
+      "parameters": {
+        "content": "**FINANCE INFO COLLECTION AGENT**",
+        "height": 560,
+        "width": 1680,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "4d3533c2-4280-4f28-9e69-493eb95c6a22",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "**TRIAGE AND SCORING AGENT**",
+        "height": 560,
+        "width": 1152,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        32,
+        672
+      ],
+      "typeVersion": 1,
+      "id": "359f93a5-7b82-4fdf-a039-7bae163f1639",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "GOTENBERG_MICROSERVICE_URL",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "gotenberg-output-filename",
+              "value": "=GIX_Briefings_{{ DateTime.local().format('dd-MM-yyyy') }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3296,
+        816
+      ],
+      "id": "22df4b83-c006-4b30-b856-dd4f14455085",
+      "name": "Gotenberg PDF Microservice"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        816,
+        736
+      ],
+      "id": "fbb58e1e-62c8-4e7c-81be-80c67290f261",
+      "name": "Aggregate2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "subscribers",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "confirmed",
+              "condition": "is",
+              "keyValue": "TRUE"
+            },
+            {
+              "keyName": "unsubscribed",
+              "condition": "is",
+              "keyValue": "FALSE"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2976,
+        1248
+      ],
+      "id": "e2fe808a-e021-4c90-ae73-acb43a5dd64e",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "UA6KZXM5X2NwtiKN",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2096,
+        1264
+      ],
+      "id": "a96b8014-75aa-455e-92bf-271f467fa17d",
+      "name": "Wait",
+      "webhookId": "2176a1e1-807d-4a16-8820-c51ee7408300"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10,
+              "triggerAtMinute": 48
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -816,
+        224
+      ],
+      "id": "965adb79-0ebd-4d49-8686-55b77d02d345",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3552,
+        848
+      ],
+      "id": "20ab3d35-f9e9-4152-a4a9-fbe828f75f06",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        464
+      ],
+      "id": "50463815-4f69-4c7c-a67b-912de9f94660",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Access the model output safely\nconst raw = $json.text || $json.output || $json.choices?.[0]?.message?.content || \"\";\n\nreturn [{\n  html: raw.replace(/```html|```/g, \"\").trim()\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        816
+      ],
+      "id": "e1e9f8fd-c76c-43ba-bcef-70a01c9d98fa",
+      "name": "HTML Formatter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Final Finance Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shortened Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ret(1-val)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Currency Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ret(Multival)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Shortened Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shortened Currencies": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Currency Query": {
+      "main": [
+        [
+          {
+            "node": "Shortened Currencies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Final Finance Info": {
+      "main": [
+        [
+          {
+            "node": "G-Sheet Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read1": {
+      "main": [
+        [
+          {
+            "node": "Essential Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Essential Info": {
+      "main": [
+        [
+          {
+            "node": "Info to Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Info to Triage": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Triage Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Triage Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage Agent": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Gotenberg PDF Microservice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Financial Data": {
+      "ai_tool": [
+        [
+          {
+            "node": "Strategic Analysis Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Compiler Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compiler Agent": {
+      "main": [
+        [
+          {
+            "node": "HTML Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strategic Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Strategic Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "G-Sheet Formatter": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finance Index Dictionary": {
+      "main": [
+        [
+          {
+            "node": "Ret(Multival)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ret(1-val)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gotenberg PDF Microservice": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate2": {
+      "main": [
+        [
+          {
+            "node": "Strategic Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Compiler Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Finance Index Dictionary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Finance Index Dictionary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Read1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Formatter": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7327b449-c261-423c-b553-843fd71de5e1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d60c120f73c613fcf72197fe6fe1334b9bb093bfe9be02d1b541bce3fda84f6e"
+  },
+  "id": "mQVwTHTjmrNSmXyh",
+  "tags": []
+}
